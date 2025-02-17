@@ -44,8 +44,11 @@ def index():
     # - create a secret plaintext (NB: `{secret}` is substituted for a secret
     # string, which you need to recover)
     plaintext = f'You never figure out that "{secret}". :)'.encode()
+    print(f" INDEX: plaintext is {plaintext}, length: {len(plaintext)}")
     # - encrypt this plaintext
     token = encrypt(plaintext)
+    print(f" INDEX: token is {token}, length: {len(token)}, blocks: {len(token)/16} ")
+    print(f" INDEX: token.hex() is {token.hex()}, length: {len(token.hex())}, blocks: {len(token.hex())/32}")
     # - store the ciphertext hex-encoded in a cookie
     response.set_cookie('authtoken', token.hex())
     return response
