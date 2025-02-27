@@ -3,8 +3,9 @@ import sys
 
 
 # URL of the target website
-BASE_URL = "http://127.0.0.1:5000"
-# BASE_URL = "https://cbc.syssec.dk"
+# BASE_URL = "http://127.0.0.1:5000"
+BASE_URL = "https://cbc.syssec.dk"
+
 
 # Get the authentication cookie
 blocklength=16
@@ -113,8 +114,8 @@ def main():
     # Step 1: Get the authentication cookie
     # auth_token = get_auth_cookie()
     # print(f"Auth Token (hex): {auth_token}")
-    auth_token = "28e597392e7d4c765ec436d2a6dcc6feee2caa69120dd9824e091f70f3c76619cc4fe84c4a2756d619ed117a8319719487174dd61ee3eb90fe1e163d5e12521b"
-    # auth_token = "54bf84d811aa49905226a3fa5819ea709748e5b3b5956d0988a438e65d1b57648be52bce3c499cb81dd9310d583a4823cb698d90a6a5771977b4de889622373bab567135328753cee3f02f050886875f8e79d1f37b34e338f005c4334d895fd2"
+    # auth_token = "28e597392e7d4c765ec436d2a6dcc6feee2caa69120dd9824e091f70f3c76619cc4fe84c4a2756d619ed117a8319719487174dd61ee3eb90fe1e163d5e12521b"
+    auth_token = "54bf84d811aa49905226a3fa5819ea709748e5b3b5956d0988a438e65d1b57648be52bce3c499cb81dd9310d583a4823cb698d90a6a5771977b4de889622373bab567135328753cee3f02f050886875f8e79d1f37b34e338f005c4334d895fd2"
     print(f"ATTACK: auth_token[hex]: {auth_token}, len:{len(auth_token)}, blocks:{len(auth_token)/32}\n")
     
     
@@ -182,11 +183,16 @@ def main():
 
     n = 3
 
-    decrypted_plaintext, ct_x = decrypt_one_block(3, decrypted_plaintext, ct_x, original_token, no_of_blocks)
+    i = 1
+
+    for i in range(0, no_of_blocks):
     
-    decrypted_plaintext, ct_x = decrypt_one_block(2, decrypted_plaintext, ct_x, original_token, no_of_blocks)
+        decrypted_plaintext, ct_x = decrypt_one_block(no_of_blocks-i-1, decrypted_plaintext, ct_x, original_token[0:(no_of_blocks-i) * blocklength], no_of_blocks)
 
+    # new_original_token = original_token[0: n*blocklength]
+    # decrypted_plaintext, ct_x = decrypt_one_block(no_of_blocks-2, decrypted_plaintext, ct_x, original_token[0: (no_of_blocks-1) * blocklength], no_of_blocks)
 
+    # decrypted_plaintext, ct_x = decrypt_one_block(no_of_blocks-3, decrypted_plaintext, ct_x, original_token[0:(no_of_blocks-2) * blocklength], no_of_blocks)
    
 
         
