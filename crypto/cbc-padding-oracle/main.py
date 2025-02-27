@@ -32,7 +32,7 @@ def decrypt(ciphertext: bytes) -> bytes:
     aes = AES.new(encryption_key, AES.MODE_CBC, iv=iv)
     # decrypt the ciphertext
     plaintext = aes.decrypt(ciphertext[16:])
-    #print(plaintext)
+    print(plaintext)
     # remove the padding of the plaintext
     message = unpad(plaintext, 16)
     return message

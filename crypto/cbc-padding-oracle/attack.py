@@ -5,10 +5,11 @@ import sys
 # URL of the target website
 BASE_URL = "http://127.0.0.1:5000"
 # BASE_URL = "https://cbc.syssec.dk"
+
 # Get the authentication cookie
 blocklength=16
 
-response_messages = ["PKCS#7 padding is incorrect.", "Padding is incorrect.","No quote for you!" ]
+response_messages = ["PKCS#7 padding is incorrect.", "Padding is incorrect." ]
 
 class PaddingOracleException(Exception):
     """Custom exception raised when valid padding is not found."""
@@ -36,17 +37,56 @@ def find_nth_byte_of_modified_CT(byte_index_to_replace:int ,  attack_ct:bytes, w
         response = make_request(f"{BASE_URL}/quote/", {'authtoken': attack_ct.hex()})
         #print(response.text)
         if response.text not in response_messages:
-            
-            print(f"found_modified_ID: {attack_ct}")
-            padding = "correct"
             #handle_edge case if it's the last byte
-            print(f"ATTACK_main: padding is valid at byte_number={byte_index_to_replace}, i={i}, byte={i.to_bytes()}")
-            print(f"ATTACK_main: when attack CT byte number={byte_index_to_replace} is : i={i} OR byte={i.to_bytes()}, plaintext byte {byte_index_to_replace+ 16} is 0x__(ie valid padding)")
-            # print(f"ATTACK_main: auth_token[bytes]: {original_token}, len:{len(original_token)}, blocks:{len(original_token)/16}")
-            return i
+            #change attackCT's byte_index_to_replace_1 and query again, if that passes, good else keep trying
+            attack_ct = replace_byte(attack_ct, byte_index_to_replace-1, 254)
+            response2 = make_request(f"{BASE_URL}/quote/", {'authtoken': attack_ct.hex()})
+
+            if response2.text not in response_messages:
+                print(f"found_modified_ID: {attack_ct}")
+                padding = "correct"
+                
+                print(f"ATTACK_main: padding is valid at byte_number={byte_index_to_replace}, i={i}, byte={i.to_bytes()}")
+                print(f"ATTACK_main: when attack CT byte number={byte_index_to_replace} is : i={i} OR byte={i.to_bytes()}, plaintext byte {byte_index_to_replace+ 16} is 0x__(ie valid padding)")
+                # print(f"ATTACK_main: auth_token[bytes]: {original_token}, len:{len(original_token)}, blocks:{len(original_token)/16}")
+                return i
 
     # If no valid padding was found, raise an exception
     raise PaddingOracleException(f"No valid padding found for byte index {byte_index_to_replace}")
+
+def decrypt_one_block(n, decrypted_plaintext, ct_x, original_token, no_of_blocks):
+    # n=no_of_blocks-1
+    for i in range(1, 17):
+        idx = (blocklength * n) -i # 46 #the cT byte index that we will modify
+        print(f"i:{i}, idx:{idx}================================================\n")
+        
+        attack_ct = original_token[:]
+
+        #replace previous(bits ahead) bits(if applicable) with the zeroing ct ^ i
+        for j in range(1, i):
+            idx_j = (blocklength*n)-j #47
+            c_j_x = ct_x[idx_j] #extract the found ct byte that results in valid padding at byte+16
+            attack_ct = replace_byte(attack_ct, idx_j, c_j_x ^ j^ i) # look at it in a bit
+
+        print(f"main: attack ct: {attack_ct}")
+        
+        # Find the current byte that produces valid padding
+        c_46_x = find_nth_byte_of_modified_CT(idx, attack_ct, 0)
+        print(c_46_x)
+
+        # Update ct_x for bookkeeping
+        ct_x = replace_byte(ct_x, idx, c_46_x) #bookkeeping
+
+        # Compute y_62 (the keystream byte)
+        y_62 = c_46_x ^ i
+        p_62 = original_token[idx] ^ y_62
+        print(p_62.to_bytes())
+
+        # Update decrypted plaintext with the found byte
+        decrypted_plaintext = replace_byte(decrypted_plaintext, idx+16, p_62) #bookkeeping
+        print(decrypted_plaintext)
+
+    return decrypted_plaintext, ct_x
 
 #=============================================
 
@@ -74,6 +114,7 @@ def main():
     # auth_token = get_auth_cookie()
     # print(f"Auth Token (hex): {auth_token}")
     auth_token = "28e597392e7d4c765ec436d2a6dcc6feee2caa69120dd9824e091f70f3c76619cc4fe84c4a2756d619ed117a8319719487174dd61ee3eb90fe1e163d5e12521b"
+    # auth_token = "54bf84d811aa49905226a3fa5819ea709748e5b3b5956d0988a438e65d1b57648be52bce3c499cb81dd9310d583a4823cb698d90a6a5771977b4de889622373bab567135328753cee3f02f050886875f8e79d1f37b34e338f005c4334d895fd2"
     print(f"ATTACK: auth_token[hex]: {auth_token}, len:{len(auth_token)}, blocks:{len(auth_token)/32}\n")
     
     
@@ -82,7 +123,7 @@ def main():
     
     print(original_token)
     print(f"ATTACK: auth_token[bytes]: {original_token}, len:{len(original_token)}, blocks:{len(original_token)/16}\n")
-    no_of_blocks = len(original_token)/16
+    no_of_blocks = int(len(original_token)/16)
    
 
     #change byte 1
@@ -140,34 +181,13 @@ def main():
     ct_x = bytes(len(original_token))
 
     n = 3
-    for i in range(1, 17):
-        idx = (blocklength * n) -i # 46 #the cT byte index that we will modify
-        print(f"i:{i}, idx:{idx}================================================\n")
-        
-        attack_ct = original_token[:]
 
-        #replace previous(bits ahead) bits(if applicable) with the zeroing ct ^ i
-        for j in range(1, i):
-            idx_j = (blocklength*n)-j #47
-            c_j_x = ct_x[idx_j] #extract the found ct byte that results in valid padding at byte+16
-            attack_ct = replace_byte(attack_ct, idx_j, c_j_x ^ j^ i) # look at it in a bit
+    decrypted_plaintext, ct_x = decrypt_one_block(3, decrypted_plaintext, ct_x, original_token, no_of_blocks)
+    
+    decrypted_plaintext, ct_x = decrypt_one_block(2, decrypted_plaintext, ct_x, original_token, no_of_blocks)
 
-        print(f"attack ct: {attack_ct}")
-        
-        # Find the current byte that produces valid padding
-        c_46_x = find_nth_byte_of_modified_CT(idx, attack_ct, 0)
-        print(c_46_x)
 
-        # Update ct_x for bookkeeping
-        ct_x = replace_byte(ct_x, idx, c_46_x) #bookkeeping
-
-        # Compute y_62 (the keystream byte)
-        y_62 = c_46_x ^ i
-        p_62 = original_token[idx] ^ y_62
-        print(p_62.to_bytes())
-
-        # Update decrypted plaintext with the found byte
-        decrypted_plaintext = replace_byte(decrypted_plaintext, idx+16, p_62) #bookkeeping
+   
 
         
     
