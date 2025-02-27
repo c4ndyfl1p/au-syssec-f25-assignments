@@ -96,7 +96,17 @@ def main():
     p_63 = original_token[47] ^ y_63   
     print(p_63.to_bytes())
 
-    # for p62
+    # for c46 / p62
+
+    #set ultimate byte to 0x02
+    attack_ct = original_token[:]
+    attack_ct = replace_byte(attack_ct, 47, c_47_x ^ 1^ 2)
+
+    #search for c_46_x
+    c_46_x = find_nth_byte_of_modified_CT(46, attack_ct, 0)
+    y_62 = c_46_x ^ 2
+    p_62 = original_token[46] ^ y_62
+    print(p_62.to_bytes())
 
     attack_ct = original_token[:]
     
