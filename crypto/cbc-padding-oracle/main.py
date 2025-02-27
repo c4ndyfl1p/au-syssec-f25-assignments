@@ -16,6 +16,7 @@ def encrypt(message: bytes) -> bytes:
     aes = AES.new(encryption_key, AES.MODE_CBC, iv=iv)
     # pad the plaintext to a multiple of the AES block size
     plaintext = pad(message, 16)
+    print(f"MAIN_encrypt: plaintext is {plaintext}\n")
     # encrypt the padded plaintext
     ciphertext = aes.encrypt(plaintext)
     # return the iv concatenated to the ciphertext
@@ -29,6 +30,7 @@ def decrypt(ciphertext: bytes) -> bytes:
     aes = AES.new(encryption_key, AES.MODE_CBC, iv=iv)
     # decrypt the ciphertext
     plaintext = aes.decrypt(ciphertext[16:])
+    print(plaintext)
     # remove the padding of the plaintext
     message = unpad(plaintext, 16)
     return message
@@ -44,11 +46,11 @@ def index():
     # - create a secret plaintext (NB: `{secret}` is substituted for a secret
     # string, which you need to recover)
     plaintext = f'You never figure out that "{secret}". :)'.encode()
-    print(f" INDEX: plaintext is {plaintext}, length: {len(plaintext)}")
+    # print(f" INDEX: plaintext is {plaintext}, length: {len(plaintext)}")
     # - encrypt this plaintext
     token = encrypt(plaintext)
-    print(f" INDEX: token is {token}, length: {len(token)}, blocks: {len(token)/16} ")
-    print(f" INDEX: token.hex() is {token.hex()}, length: {len(token.hex())}, blocks: {len(token.hex())/32}")
+    # print(f" INDEX: token is {token}, length: {len(token)}, blocks: {len(token)/16} ")
+    # print(f" INDEX: token.hex() is {token.hex()}, length: {len(token.hex())}, blocks: {len(token.hex())/32}")
     # - store the ciphertext hex-encoded in a cookie
     response.set_cookie('authtoken', token.hex())
     return response
@@ -66,6 +68,7 @@ def quote():
         token = bytes.fromhex(token)
         plain = decrypt(token).decode()
     except Exception as e:
+        print(e)
         return str(e)
     # check if this token is valid
     if plain == secret + ' plain CBC is not secure!':

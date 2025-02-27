@@ -24,6 +24,7 @@ NB: This is of course not a good authentication method, but rather a somewhat
 artificial example demonstrating the problems of unauthenticated symmetric
 encryption.
 
+
 ## Running the Service Locally
 
 With the given files, you can play around with the service and test your code
