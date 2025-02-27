@@ -8,6 +8,8 @@ from secret_data import encryption_key, secret
 app = Flask(__name__)
 quotes = open('quotes.txt', 'r').readlines()
 
+response_messages = ["PKCS#7 padding is incorrect.", "Padding is incorrect.","No quote for you!" ]
+
 
 def encrypt(message: bytes) -> bytes:
     """Encrypt a message using our encryption key."""
@@ -30,7 +32,7 @@ def decrypt(ciphertext: bytes) -> bytes:
     aes = AES.new(encryption_key, AES.MODE_CBC, iv=iv)
     # decrypt the ciphertext
     plaintext = aes.decrypt(ciphertext[16:])
-    print(plaintext)
+    #print(plaintext)
     # remove the padding of the plaintext
     message = unpad(plaintext, 16)
     return message
@@ -68,7 +70,8 @@ def quote():
         token = bytes.fromhex(token)
         plain = decrypt(token).decode()
     except Exception as e:
-        print(e)
+        if e not in response_messages:
+            print(e)
         return str(e)
     # check if this token is valid
     if plain == secret + ' plain CBC is not secure!':
