@@ -49,6 +49,9 @@ def find_nth_byte_of_modified_CT(byte_index_to_replace:int ,  attack_ct:bytes, w
         response = make_request(f"{BASE_URL}/quote/", {'authtoken': attack_ct.hex()})
         #print(response.text)
         if response.text not in response_messages:
+            if byte_index_to_replace == 0:
+                print(f"FUNC_find nth byte: we are at byte index to replace 0 for this block")
+                return i
             #handle_edge case if it's the last byte
             #change attackCT's byte_index_to_replace_1 and query again, if that passes, good else keep trying
             attack_ct = replace_byte(attack_ct, byte_index_to_replace-1, 254)
@@ -99,9 +102,13 @@ def decrypt_one_block(n: int, decrypted_plaintext:bytes, ct_x:bytes, original_to
 
     """
     # n=no_of_blocks-1
+    
     for i in range(1, 17):
         idx = (blocklength * n) -i # 46 #the cT byte index that we will modify
+        
         print(f"i:{i}, idx:{idx}================================================\n")
+        if idx ==-1: #hacky fix
+            break
         
         attack_ct = original_token[:]
 
@@ -114,10 +121,9 @@ def decrypt_one_block(n: int, decrypted_plaintext:bytes, ct_x:bytes, original_to
         # print(f"main: attack ct: {attack_ct}")
         
         # Find the current byte that produces valid padding
-        try:
-            c_46_x = find_nth_byte_of_modified_CT(idx, attack_ct, 0)
-        except Exception as e:
-            print(e)
+        
+        c_46_x = find_nth_byte_of_modified_CT(idx, attack_ct, 0)
+        
         # print(c_46_x)
 
         # Update ct_x for bookkeeping
@@ -140,7 +146,6 @@ def decrypt_one_block(n: int, decrypted_plaintext:bytes, ct_x:bytes, original_to
         print(f"FUNC_decrypt_one_block: y_62 = {y_62} = {c_46_x} xor {i}- sanity check")
 
         
-
     return decrypted_plaintext, ct_x, keystream
 
 #=============================================
