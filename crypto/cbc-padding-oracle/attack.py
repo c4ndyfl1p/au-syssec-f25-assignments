@@ -267,7 +267,9 @@ def main():
     
 
     # make request with forged token
-
+    response_final = make_request(f"{BASE_URL}/quote", {'authtoken': bytes(forged_token).hex() }  )
+    # response = make_request(f"{BASE_URL}/quote/", {'authtoken': attack_ct.hex()})
+    print(response_final.text)
   
 
     
