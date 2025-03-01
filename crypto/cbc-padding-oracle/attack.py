@@ -3,7 +3,7 @@ import sys
 from Crypto.Util.Padding import pad
 import secrets
 
-MODE = "local"  # or "SERVER"
+MODE = "local"  # or "server"
 
 # URL of the target website
 if MODE == "local":

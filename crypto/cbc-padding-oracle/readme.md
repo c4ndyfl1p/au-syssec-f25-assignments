@@ -52,3 +52,14 @@ Alternatively, we also prepared a Docker container that you can use:
 ```
 
 In both cases, the application is reachable at <http://localhost:5000/>.
+
+
+## ATTACK
+after following the previous steps -
+Run attack.py. 
+
+Look for a global variable defined at the very top
+```MODE = "local"  # or "SERVER"```
+toggle it as required to test locally or on the remote hosted server
+
+
