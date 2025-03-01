@@ -4,9 +4,13 @@ from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad, unpad
 import secrets
 
+MODE = "local" # or "SERVER"
+
 # URL of the target website
-# BASE_URL = "http://127.0.0.1:5000"
-BASE_URL = "https://cbc.syssec.dk"
+if MODE == "local":
+    BASE_URL = "http://127.0.0.1:5000"
+if MODE == "server":
+    BASE_URL = "https://cbc.syssec.dk"
 
 
 # Get the authentication cookie
@@ -86,7 +90,8 @@ def decrypt_one_block(n: int, decrypted_plaintext:bytes, ct_x:bytes, original_to
         example1: ct_47_x (last attcker controlled byte of C_2) corrosponds to when P_63 is 0x01
         example2: ct_46_x (second last last attcker controlled byte of C_2) corrosponds to when P_62 and P_63 are both 0x02
         When this ct_x is found, it will be marshalled into the right place. Works on the larger encrpted ct and not just the 
-        block ct. But only the block we are looking into gets touched, rest remains untouched.
+        block ct. But only the block we are looking into gets touched, rest remains untouched. In retrospect I should have not 
+        done this and stuck to a more local (2 block ) context(maybe?)
         length = len(original_ciphertext)
 
     original_token: lenght should be from byte 0 to last byte of the block we want to decrypt.
@@ -161,54 +166,23 @@ def get_auth_cookie():
 
 # Padding oracle attack to decrypt the token
 
-
-# Forge a valid authentication token
-# def forge_token(secret):
-#     # Implement CBC encryption using the oracle to generate a valid token
-#     pass  # Replace this with your attack logic
-
-
 def padding_oracle_attack(original_token, no_of_blocks):
-        decrypted_plaintext = bytes(len(original_token))
-        ct_x = bytes(len(original_token))
-        key_stream = bytes(blocklength)
+    decrypted_plaintext = bytes(len(original_token))
+    ct_x = bytes(len(original_token))
+    key_stream = bytes(blocklength)
 
-        for i in range(0, no_of_blocks):    
-            decrypted_plaintext, ct_x, key_stream = decrypt_one_block(no_of_blocks-i-1, decrypted_plaintext, ct_x, original_token[0:(no_of_blocks-i) * blocklength], no_of_blocks, key_stream)
-    
-        return decrypted_plaintext, ct_x
+    for i in range(0, no_of_blocks):    
+        decrypted_plaintext, ct_x, key_stream = decrypt_one_block(no_of_blocks-i-1, decrypted_plaintext, ct_x, original_token[0:(no_of_blocks-i) * blocklength], no_of_blocks, key_stream)
 
-def main():
-    # Step 1: Get the authentication cookie
-    
-    # auth_token = "28e597392e7d4c765ec436d2a6dcc6feee2caa69120dd9824e091f70f3c76619cc4fe84c4a2756d619ed117a8319719487174dd61ee3eb90fe1e163d5e12521b"
-    auth_token = "54bf84d811aa49905226a3fa5819ea709748e5b3b5956d0988a438e65d1b57648be52bce3c499cb81dd9310d583a4823cb698d90a6a5771977b4de889622373bab567135328753cee3f02f050886875f8e79d1f37b34e338f005c4334d895fd2"
-    print(f"ATTACK: auth_token[hex]: {auth_token}, len:{len(auth_token)}, blocks:{len(auth_token)/32}\n")
-    
-    
-    #  Convert hex to bytes
-    original_token = bytes.fromhex(auth_token)
-    
-    print(f"MAIN: original token :{original_token}\n")
-    # print(f"ATTACK: auth_token[bytes]: {original_token}, len:{len(original_token)}, blocks:{len(original_token)/16}\n")
-    no_of_blocks = int(len(original_token)/16)
-   
-  
-    #======================================
-    #the actual attack to get the secret
-    # decrypted_plaintext, ct_x = padding_oracle_attack(original_token, no_of_blocks)
-    #=========================================
+    return decrypted_plaintext, ct_x
 
-    #======================================================
-    # for encryption of the now known secret without the key
 
-    plaintext = b"<redacted> plain CBC is not secure!"
-
-    
-    secret_server = b"I must use authenticated encryption since ..." #we found
-    secret_server+= b" plain CBC is not secure!" # we found
-
-    plaintext = pad(secret_server, blocklength)
+def forge_cbc_token(plaintext):
+    """
+    forge cbc token for a known plaintext, but unkown encryption key
+    implemented from, with <3 : Juliano Rizzo; Thai Duong (25 May 2010). Practical Padding Oracle Attacks (PDF). USENIX WOOT 2010.    
+    """
+    plaintext = pad(plaintext, blocklength)
     print(f"MAIN: attack plaintext length after padding = {len(plaintext)}")
     forged_ct_length = len(plaintext) + blocklength
     print(f"MAIN: forged_ct_length = {forged_ct_length}")  #when this is 64 CT = IV || CT_0 || CT_1|| CT_2(random) ie 4 blocks
@@ -221,7 +195,7 @@ def main():
     key_stream = bytes(blocklength)
 
     
-    n = int(len(plaintext)/blocklength) #no of plaintext blocks = 3
+    n = int(len(plaintext)/blocklength) # example no of plaintext blocks = 3
 
     #sample random last CT (C_2)
     c_2 = secrets.token_bytes(blocklength) #C_(N-1) is randomly sampled
@@ -244,9 +218,9 @@ def main():
         c_1 = xor_bytes(p_2 ,d_PO_c_2) 
     
         # #replace block and continue for c_1
-   
+
         forged_token[blocklength*i: blocklength*(i+1) ] = c_1
-     
+    
         print(f"MAIN: forged token : {forged_token} \n")
         print(f"MAIN: forged token  length: {len(forged_token)}")
 
@@ -265,35 +239,62 @@ def main():
 
     print(f"MAIN: forged token : {forged_token} \n")
     print(f"MAIN: forged token  length: {len(forged_token)}")  
+
+    return forged_token
+
+
+def main():
+
+    #==============================================================
+    # Step 1: Get the authentication cookie by going to base url and copy pasting the cookie here(this is hardcoded)   
+    
+    if MODE == "local":
+        auth_token = "28e597392e7d4c765ec436d2a6dcc6feee2caa69120dd9824e091f70f3c76619cc4fe84c4a2756d619ed117a8319719487174dd61ee3eb90fe1e163d5e12521b"
+    if MODE == "server":
+        auth_token = "54bf84d811aa49905226a3fa5819ea709748e5b3b5956d0988a438e65d1b57648be52bce3c499cb81dd9310d583a4823cb698d90a6a5771977b4de889622373bab567135328753cee3f02f050886875f8e79d1f37b34e338f005c4334d895fd2"
+    print(f"ATTACK: auth_token[hex]: {auth_token}, len:{len(auth_token)}, blocks:{len(auth_token)/32}\n")
+        
+    #  Convert hex to bytes
+    original_token = bytes.fromhex(auth_token)
+    
+    # print(f"MAIN: original token :{original_token}\n")
+    # print(f"ATTACK: auth_token[bytes]: {original_token}, len:{len(original_token)}, blocks:{len(original_token)/16}\n")
+    no_of_blocks = int(len(original_token)/16)
+   
+  
+    #======================================
+    # Step 2: launch the CBC-padding-oracle-decryption attack to get the secret
+    # comment out/ uncomment to disable or run
+    # decrypted_plaintext, ct_x = padding_oracle_attack(original_token, no_of_blocks)
     
 
-    # make request with forged token
+
+    #======================================================
+
+    # Step 3: copy paste the secret you got from Step 2(hard coded here) and 
+    # launch the decryption oracle attack to forge a tokem
+
+    
+    # for encryption of the now known secret without the key
+    if MODE == "local":
+        plaintext = b"<redacted> plain CBC is not secure!"
+
+    if MODE == "server":    
+        plaintext = b"I must use authenticated encryption since ..." #we found
+        plaintext+= b" plain CBC is not secure!" # we found
+
+
+    forged_token = forge_cbc_token(plaintext)
+    
+    #==========================================================================
+    # Step 4: make request with the forged token
+    
     response_final = make_request(f"{BASE_URL}/quote", {'authtoken': bytes(forged_token).hex() }  )
-    # response = make_request(f"{BASE_URL}/quote/", {'authtoken': attack_ct.hex()})
+    
     print(response_final.text)
   
 
-    
 
-    
-    # decrypted_plaintext, ct_x, key_stream = decrypt_one_block(no_of_blocks-i-1, decrypted_plaintext, ct_x, original_token[0:(no_of_blocks-i) * blocklength], no_of_blocks, key_stream)
-    # print(keystream)
-
-
-    
-
-    # candidate_key_local = b"BBB<redacted>BBB"
-
-
-   
-
-    
-    # generate a random IV
-  
-
-    
-    # attack the quote page to get quote
-        
 
 
 
