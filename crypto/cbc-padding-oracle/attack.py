@@ -5,8 +5,8 @@ from Crypto.Util.Padding import pad, unpad
 import secrets
 
 # URL of the target website
-BASE_URL = "http://127.0.0.1:5000"
-# BASE_URL = "https://cbc.syssec.dk"
+# BASE_URL = "http://127.0.0.1:5000"
+BASE_URL = "https://cbc.syssec.dk"
 
 
 # Get the authentication cookie
@@ -181,8 +181,8 @@ def padding_oracle_attack(original_token, no_of_blocks):
 def main():
     # Step 1: Get the authentication cookie
     
-    auth_token = "28e597392e7d4c765ec436d2a6dcc6feee2caa69120dd9824e091f70f3c76619cc4fe84c4a2756d619ed117a8319719487174dd61ee3eb90fe1e163d5e12521b"
-    # auth_token = "54bf84d811aa49905226a3fa5819ea709748e5b3b5956d0988a438e65d1b57648be52bce3c499cb81dd9310d583a4823cb698d90a6a5771977b4de889622373bab567135328753cee3f02f050886875f8e79d1f37b34e338f005c4334d895fd2"
+    # auth_token = "28e597392e7d4c765ec436d2a6dcc6feee2caa69120dd9824e091f70f3c76619cc4fe84c4a2756d619ed117a8319719487174dd61ee3eb90fe1e163d5e12521b"
+    auth_token = "54bf84d811aa49905226a3fa5819ea709748e5b3b5956d0988a438e65d1b57648be52bce3c499cb81dd9310d583a4823cb698d90a6a5771977b4de889622373bab567135328753cee3f02f050886875f8e79d1f37b34e338f005c4334d895fd2"
     print(f"ATTACK: auth_token[hex]: {auth_token}, len:{len(auth_token)}, blocks:{len(auth_token)/32}\n")
     
     
@@ -203,7 +203,12 @@ def main():
     # for encryption of the now known secret without the key
 
     plaintext = b"<redacted> plain CBC is not secure!"
-    plaintext = pad(plaintext, blocklength)
+
+    
+    secret_server = b"I must use authenticated encryption since ..." #we found
+    secret_server+= b" plain CBC is not secure!" # we found
+
+    plaintext = pad(secret_server, blocklength)
     print(f"MAIN: attack plaintext length after padding = {len(plaintext)}")
     forged_ct_length = len(plaintext) + blocklength
     print(f"MAIN: forged_ct_length = {forged_ct_length}")  #when this is 64 CT = IV || CT_0 || CT_1|| CT_2(random) ie 4 blocks
@@ -215,47 +220,38 @@ def main():
     ct_x = bytes(forged_ct_length)
     key_stream = bytes(blocklength)
 
-    #sample random last CT (C_2)
-    c_2 = secrets.token_bytes(blocklength)
     
-    #replace block
-    # forged_token = bytearray(forged_token)
-    forged_token[blocklength*3: (blocklength*4) ] = c_2
-    # forged_token = bytes(forged_token)    
+    n = int(len(plaintext)/blocklength) #no of plaintext blocks = 3
+
+    #sample random last CT (C_2)
+    c_2 = secrets.token_bytes(blocklength) #C_(N-1) is randomly sampled
+
+    forged_token[blocklength*3: (blocklength*4) ] = c_2       
     print(f"MAIN: forged token : {forged_token}\n")
     print(f"MAIN: forged token _ length: {len(forged_token)}")
+
+    for i in range(n-1, 0, -1):  #i = N-1 = 2 when N = 3    
+        print(i)
+
+        decrypted_plaintext, ct_x, key_stream = decrypt_one_block(i+1, decrypted_plaintext, ct_x, bytes(forged_token[0: blocklength*(i+1+1)]), 0, key_stream)
+        d_PO_c_2 = key_stream
+        print(f"MAIN: D_po_c2 = {d_PO_c_2}, len : {len(d_PO_c_2)}")
+
+        p_2 = plaintext[blocklength*i: (blocklength*(i+1) )]
+        print(f"MAIN: plaintext block index 2: {p_2}, len: {len(p_2)} ")
+
+        #step 2 - get C_(i-1)
+        c_1 = xor_bytes(p_2 ,d_PO_c_2) 
     
+        # #replace block and continue for c_1
+   
+        forged_token[blocklength*i: blocklength*(i+1) ] = c_1
+     
+        print(f"MAIN: forged token : {forged_token} \n")
+        print(f"MAIN: forged token  length: {len(forged_token)}")
 
-    decrypted_plaintext, ct_x, key_stream = decrypt_one_block(3, decrypted_plaintext, ct_x, bytes(forged_token[0: blocklength*4]), 0, key_stream)
-    d_PO_c_2 = key_stream
-    print(f"MAIN: D_po_c2 = {d_PO_c_2}, len : {len(d_PO_c_2)}")
 
-    p_2 = plaintext[blocklength*2: (blocklength*3 )]
-    print(f"MAIN: plaintext block index 2: {p_2}, len: {len(p_2)} ")
-    c_1 = xor_bytes(p_2 ,d_PO_c_2)
     
-    # #replace block and continue for c_1
-   
-    forged_token[blocklength*2: blocklength*3 ] = c_1
-     
-    print(f"MAIN: forged token : {forged_token} \n")
-    print(f"MAIN: forged token  length: {len(forged_token)}")
-
-    decrypted_plaintext, ct_x, key_stream = decrypt_one_block(2, decrypted_plaintext, ct_x, bytes(forged_token[0: blocklength*3]), 0, key_stream)
-    d_PO_c_1 = key_stream
-    print(f"MAIN: D_po_c1 = {d_PO_c_1}, len : {len(d_PO_c_1)}")
-
-    p_1 = plaintext[blocklength*1: (blocklength*2 )]
-    print(f"MAIN: plaintext block index 2: {p_1}, len: {len(p_1)} ")
-    c_0 = xor_bytes(p_1 ,d_PO_c_1)
-
-    # #replace block and continue for c_0
-   
-    forged_token[blocklength*1: blocklength*2 ] = c_0
-     
-    print(f"MAIN: forged token : {forged_token} \n")
-    print(f"MAIN: forged token  length: {len(forged_token)}")
-
     decrypted_plaintext, ct_x, key_stream = decrypt_one_block(1, decrypted_plaintext, ct_x, bytes(forged_token[0: blocklength*2]), 0, key_stream)
     d_PO_c_0 = key_stream
     print(f"MAIN: D_po_c0 = {d_PO_c_0}, len : {len(d_PO_c_0)}")
@@ -288,10 +284,8 @@ def main():
 
     # candidate_key_local = b"BBB<redacted>BBB"
 
-    secret_server = b"I must use authenticated encryption since ..." #we found
-    secret_server+= b" plain CBC is not secure!" # we found
 
-    candidate_key_server = "I must use authenticated encryption since ..."
+   
 
     
     # generate a random IV
