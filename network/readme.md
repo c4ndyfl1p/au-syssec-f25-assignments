@@ -1,17 +1,10 @@
 ### Task 1: Encrypted covert channel
+I chose to do Task 1 for this assignment 
 
-For this part, you will need to have some familiarity with the IP protocol to write low-level networking code using a library. Suggestions are the `libnet/libpcap` library in the C programming language or the equivalent `socket` package in Python.
 
-We assume the following scenario: a whistleblower inside a network needs to transmit sensitive information to the outside, but without being detected by a draconian firewall. The firewall is configured to not allow much traffic to pass, but the system administrator has allowed some types of packets to go through because they can be used for debugging purposes. Our whistleblower has then decided to send non-standard ICMP packets containing encrypted data, in hope they can claim software error and plausibly deny the transmission in case they are detected.
+Screenshot:
+![screenshot](image.png)
 
-The objective of this task is to implement an one-way encrypted covert channel using the [ICMP](https://en.wikipedia.org/wiki/Internet_Control_Message_Protocol) (Internet Control Message Protocol) protocol.
-Communication is one-way to follow the typical use case of covert channels for _exfiltration_ of sensitive data.
-ICMP is an error-reporting protocol that network devices use to inform of error messages to the source IP address when network problems prevent an IP packet to be delivered.
-The most familiar contact we have with the ICMP protocol is the `ping` tool using the `Echo Request` and `Echo Reply` messages. While these packets are typically small, it is not well-known that ICMP packets can carry much larger pieces of data.
-
-You will implement client/server programs to exchange encrypted covert channel through the network. For this, use ICMP messages with type `47` (among the reserved numbers). The client program should receive a destination IP address from the command-line to transmit messages and wait for input from the keyboard at the client-side. The server program should listen to the network for such messages and print them in the console as they arrive. For encryption, you are free to use a preshared symmetric key to protect the transmitted payload. Choose algorithms and modes of operation wisely.
-
-![Screenshot of a possible solution](icmp-covert-channel.png)
 
 ###
 Instructions to run the code on debian based systems-
@@ -50,9 +43,6 @@ Note: scapy needs elevated priveledges to send and sniff packages. You can read 
 7. Run Client
 Note: same as previous. Elevated privledge needed to send packets
 `sudo $(which python3) network/client.py`
-
-Screenshot:
-![screenshot](image.png)
 
 
 # Troubleshooting notes:
