@@ -1,9 +1,3 @@
-# Attacking and defending networks
-
-## Your Task(s)
-
-The assignment has *four* tasks, covering both constructive and destructive aspect of networks: (1) the first deals with implementing an encrypted covert channel; (2) the second with implementing a TCP throttling/DoS tool; (3) the third with implementing a session hijacking attack against a TCP connection; and (4) the fourth with implementing a small VPN tunneling program.
-
 ### Task 1: Encrypted covert channel
 
 For this part, you will need to have some familiarity with the IP protocol to write low-level networking code using a library. Suggestions are the `libnet/libpcap` library in the C programming language or the equivalent `socket` package in Python.
@@ -19,42 +13,67 @@ You will implement client/server programs to exchange encrypted covert channel t
 
 ![Screenshot of a possible solution](icmp-covert-channel.png)
 
-### Task 2: Throttling TCP connections
+###
+Instructions to run the code on debian based systems-
 
-For this part, you will need to have some familiarity with the TCP protocol to write low-level networking code using a library. Suggestions again are the `libnet/libpcap` library in the C programming language or the equivalent `Scapy` package in Python.
+## Files explained:
+All (solution) code resides in :
+/home/alex/syssec/au-syssec-f25-assignments/network
 
-The objective of this task is to slow down or interrupt existing TCP connections by forcing retransmission of packets. An illustrative example of such an approach is the `tcpnice` program in the `dsniff` package which reduces windows advertised to artificially decrease bandwidth. We will adopt two different approaches: [sending 3 duplicate ACK packets](https://datatracker.ietf.org/doc/html/rfc2581) to simulate packet loss and force retransmission; or sending a TCP reset packet to drop the connection altogether.
+At that level:
+server.py - has server code
+client.py - has client code
+aes_crypto.py - has enc/dec functions
+use_crypto.py - (can be ignored) sanity checks that crypo is working right
 
-You will implement a tool that receives a source and destination IP addresses to listen for TCP connections and what approach for throttling should be used. The tool should be executed on a third node with access to the traffic. Whenever such a packet is captured, RST or 3 duplicate ACK packets should be sent back to the origin and/or destination.
-For the experimental setup, you can try using virtual machines, or leveraging the VM used for practical exercises as a malicious node to interfere with connections between the host machine and another device.
-Collect experimental evidence of the malicious behavior through Wireshark, and screenshots of the time taken to transmit a file using a file transfer (FTP or SSH) to show that it is indeed slower or interrupted when under attack.
 
-**Note**: The experimental part in this task can be difficult to assemble. We suggest having the destination as an Internet host, to guarantee some latency; and the source and attacker to be in the same local network, with the attacker being the router that receives all traffic from the source (as in the network security lab exercise). This allows the attacker to get their ACKs accepted before the legitimate ones arrive. You may face countermeasures along the way that negate the attack, but in that case make sure to *document* your negative results.
+## How to run the code:
+1. download solution code
 
-### Task 3: TCP Session hijacking
+2. cd into the folder
+`cd au-syssec-f25-assignments`
+(please make sure to stay at this level while running the rest if the steps)
 
-This part overlaps with the previous task, in the sense that the experimental setup is similar and requires the same tools, so doing the two tasks together might be beneficial for a group.
+3. make a venv(dealers choice- however you manage virtual envs)
 
-The objective of this task is to hijack an ongoing TCP connection to perform traffic manipulation attacks. One way for an attacker to leverage a privileged network position is monitoring TCP sequence numbers and introduce new traffic that is accepted by one of the connection endpoints.
-You will implement a tool that receives a source and destination IP addresses to listen for TCP connections carrying HTTP traffic. The tool should be executed on a third node with access to the traffic. Whenever a HTTP packet is captured, the tool should inspect the payload in search of an HTTP session cookie, steal it and perform an HTTP method on behalf of the source.
-For the experimental setup, you can try using virtual machines, or leveraging the VM used for practical exercises as a malicious node to interfere with connections between the host machine and the HTTP server.
-Collect experimental evidence of the malicious behavior through Wireshark, showing that the forged request was indeed send to the HTTP server.
+4. activate it(however you manage your virtual envs)
 
-**Note**: The experimental part in this task can be difficult to assemble. We suggest having the destination as an Internet host running an HTTP server, with the source and attacker in the same local network. The attacker should be the router that receives all traffic from the source (as in the network security lab exercise). You can use the simple-website application made available in the network security lab exercises as a simple web server.
-For your convenience, the web server has been included here, in the subfolder "simple-website".
-Run the web server with the command:
+5. Install dependencies
+`pip3 install scapy`
+`pip3 install pycryptodome`
 
-```
-flask --app main.py run
-```
+6. Run server.
+Note: scapy needs elevated priveledges to send and sniff packages. You can read throuh the code to make sure nothing harmful going on. 
+`sudo $(which python3) network/server.py`
 
-Observe that when you log in, the server gives you a cookie.
 
-### Task 4: Mini TLS-based VPN tunneling
+7. Run Client
+Note: same as previous. Elevated privledge needed to send packets
+`sudo $(which python3) network/client.py`
 
-For this part, less familiarity with low-level networking programming details is necessary. In particular, this [SEED lab](https://seedsecuritylabs.org/Labs_20.04/Networking/VPN_Tunnel/) has starting code for reference.
-The objective of this task is to implement a small VPN tunneling program that will allow hosts to communicate over an encrypted connection. Follow the tutorial from the SEED lab above up to Task 5 (while ignoring the instructions to write a report) until you have a functional implementation able to transmit unencrypted traffic.
+Screenshot:
+![screenshot](image.png)
 
-Your task is then to finalize the implementation by replacing the UDP socket with a TLS/SSL connection. A simple certificate structure must be deployed for mutually authenticating the client and server, where a common self-signed certificate will be available on both endpoints.
-Collect evidence of the correct behavior through Wireshark and screenshots showing that traffic is correctly forwarded.
-You are not supposed to write your own TLS/SSL implementation and a library should be used for that.
+
+# Troubleshooting notes:
+
+1. I tested this on my local machine using loopback IP, and hence the loopback interface. My loopback interface is called "lo", and this can be named differently on differnt devices. server.py line 33 specifies that as the interface to listen on.
+
+`sniff(filter="icmp ", prn=icmp_callback, store=0, iface="lo") 
+`
+
+If the code does not work for some reason, try checking your specific loopback interface name
+
+`ifconfig` on ubuntu, will show interfaces.
+
+`sniff(filter="icmp ", prn=icmp_callback, store=0, iface="<your_interface_name>") `
+
+2. If you test on 2 different devices, please change the interface name accordingly in the last line in server.py
+
+
+# Citations and references:
+1. https://thepacketgeek.com/scapy/ for a really well explained beginner friendly introduction to scapy. I was a bit lost before that
+
+2. https://scapy.net/  < 3 < 3
+
+3. ChatGPT for tasks i did not want to look up python docs for(and also scapy docs for, but honesty scapy is just so intuitive < 3), also writing enc/dec code. 
